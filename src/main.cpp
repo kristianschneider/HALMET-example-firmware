@@ -13,7 +13,6 @@
 #include <Adafruit_SSD1306.h>
 
 #include <NMEA2000_esp32.h>
-#include <N2kDeviceList.h>
 
 #include "debug_gps.h"
 #include "n2k_senders.h"
@@ -29,6 +28,8 @@
 #include "sensesp/ui/config_item.h"
 #include "sensesp_nmea0183/nmea0183.h"
 #include "sensesp_nmea0183/wiring.h"
+#include "sensesp_onewire/onewire_temperature.h"
+
 
 // #ifdef ENABLE_SIGNALK
 #include "sensesp_app_builder.h"
@@ -37,6 +38,8 @@
 // #include "sensesp_minimal_app_builder.h"
 // #endif
 
+#include "Arduino.h"
+#include "NMEA2000Handler.h"
 #include "halmet_analog.h"
 #include "halmet_const.h"
 #include "halmet_digital.h"
@@ -48,6 +51,8 @@
 using namespace sensesp;
 using namespace halmet;
 using namespace sensesp::nmea0183;
+using namespace sensesp::onewire;
+
 
 // #ifndef ENABLE_SIGNALK
 // #define BUILDER_CLASS SensESPMinimalAppBuilder
@@ -64,16 +69,19 @@ constexpr int kGNSSRxPin = 13;
 // set the Tx pin to -1 if you don't want to use it
 constexpr int kGNSSTxPin = 15;
 
-/////////////////////////////////////////////////////////////////////
-// Declare some global variables required for the firmware operation.
+///////////// DS18S20  config /////////////
+const int kDQPin = 4;
+uint onewire_read_delay = 1000;
 
 
-tNMEA2000* nmea2000;
+
 elapsedMillis n2k_time_since_rx = 0;
 elapsedMillis n2k_time_since_tx = 0;
 TwoWire* i2c;
 Adafruit_SSD1306* display;
-tN2kDeviceList *locN2KDeviceList;
+tNMEA2000* nmea2000;
+
+
 
 // Store alarm states in an array for local display output
 bool alarm_states[4] = {false, false, false, false};
@@ -130,24 +138,13 @@ void setup() {
                     //->enable_ota("my_ota_password")
                     ->get_app();
 
-  //Setup GPS serial port
-  HardwareSerial* serial = &Serial1;
-  serial->begin(kGNSSBitRate, SERIAL_8N1, kGNSSRxPin, kGNSSTxPin);
-
-  // StreamLineProducer* line_producer = new StreamLineProducer(serial);
-
-  //  Filter<String>* debugger_filter = new Filter<String>([](const String& line) {
-  //   debugD("NMEA: %s", line.c_str());
-  //   return line;
-  // });
-
-  // line_producer->connect_to(debugger_filter);
-
-  NMEA0183IOTask* nmea0183_io_task = new NMEA0183IOTask(serial);
-
   
-  ConnectGNSS(&nmea0183_io_task->parser_, new GNSSData());
+  //Setup GPS serial port
+  NMEAGPS();
 
+  OneWire();
+
+  NMEA2K();
 
   // initialize the I2C bus
   i2c = new TwoWire(0);
@@ -161,62 +158,14 @@ void setup() {
   debugD("ADS1115 initialized: %d", ads_initialized);
 
 
-
-  /////////////////////////////////////////////////////////////////////
-  // Initialize NMEA 2000 functionality
-  nmea2000 = new tNMEA2000_esp32(kCANTxPin, kCANRxPin);
-
-  // Reserve enough buffer for sending all messages.
-  nmea2000->SetN2kCANSendFrameBufSize(250);
-  nmea2000->SetN2kCANReceiveFrameBufSize(250);
-
-  // Set Product information
-  // EDIT: Change the values below to match your device.
-  nmea2000->SetProductInformation(
-      "20231229",  // Manufacturer's Model serial code (max 32 chars)
-      104,         // Manufacturer's product code
-      "HALMET",    // Manufacturer's Model ID (max 33 chars)
-      "1.0.0",     // Manufacturer's Software version code (max 40 chars)
-      "1.0.0"      // Manufacturer's Model version (max 24 chars)
-  );
-
-  // For device class/function information, see:
-  // http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
-
-  // For mfg registration list, see:
-  // https://actisense.com/nmea-certified-product-providers/
-  // The format is inconvenient, but the manufacturer code below should be
-  // one not already on the list.
-
-  // EDIT: Change the class and function values below to match your device.
-  nmea2000->SetDeviceInformation(
-      GetBoardSerialNumber(),  // Unique number. Use e.g. Serial number.
-      140,                     // Device function: Engine
-      50,                      // Device class: Propulsion
-      2046);                   // Manufacturer code
-
-  nmea2000->SetMode(tNMEA2000::N2km_NodeOnly,
-                    71  // Default N2k node address
-  );
-  locN2KDeviceList = new tN2kDeviceList(nmea2000);
-  nmea2000->EnableForward(false);
-  nmea2000->Open();
-  
-  // No need to parse the messages at every single loop iteration; 1 ms will do
-  event_loop()->onRepeat(1, []() { 
-    nmea2000->ParseMessages(); 
-    
-    });
-
-
-// #ifndef ENABLE_SIGNALK
+  // #ifndef ENABLE_SIGNALK
   // Initialize components that would normally be present in SensESPApp
   // networking = new Networking("/System/WiFi Settings", "", "");
   // ConfigItem(networking);
   // mdns_discovery = new MDNSDiscovery();
   // http_server = new HTTPServer();
   // system_status_led = new SystemStatusLed(LED_BUILTIN);
-// #endif
+  // #endif
 
 
   ///////////////////////////////////////////////////////////////////
@@ -305,6 +254,83 @@ void setup() {
   while (true) {
     loop();
   }
+}
+
+void NMEA2K() {
+  /////////////////////////////////////////////////////////////////////
+  // Initialize NMEA 2000 functionality
+  nmea2000 = new tNMEA2000_esp32(kCANTxPin, kCANRxPin);
+
+  // Reserve enough buffer for sending all messages.
+  nmea2000->SetN2kCANSendFrameBufSize(250);
+  nmea2000->SetN2kCANReceiveFrameBufSize(250);
+  nmea2000->SetMsgHandler(NMEA2000Handler::HandleNMEA2000Msg);
+
+  // Set Product information
+  // EDIT: Change the values below to match your device.
+  nmea2000->SetProductInformation(
+      "20231229",  // Manufacturer's Model serial code (max 32 chars)
+      104,         // Manufacturer's product code
+      "HALMET",    // Manufacturer's Model ID (max 33 chars)
+      "1.0.0",     // Manufacturer's Software version code (max 40 chars)
+      "1.0.0"      // Manufacturer's Model version (max 24 chars)
+  );
+
+  // For device class/function information, see:
+  // http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
+
+  // For mfg registration list, see:
+  // https://actisense.com/nmea-certified-product-providers/
+  // The format is inconvenient, but the manufacturer code below should be
+  // one not already on the list.
+
+  // EDIT: Change the class and function values below to match your device.
+  nmea2000->SetDeviceInformation(
+      GetBoardSerialNumber(),  // Unique number. Use e.g. Serial number.
+      140,                     // Device function: Engine
+      50,                      // Device class: Propulsion
+      2046);                   // Manufacturer code
+
+  nmea2000->SetMode(tNMEA2000::N2km_NodeOnly,
+                    71  // Default N2k node address
+  );
+  nmea2000->EnableForward(false);
+  nmea2000->Open();
+
+  // No need to parse the messages at every single loop iteration; 1 ms will do
+  event_loop()->onRepeat(1, []() {
+    nmea2000->ParseMessages();
+  });
+}
+
+void NMEAGPS() {
+  HardwareSerial* serial = &Serial1;
+  serial->begin(kGNSSBitRate, SERIAL_8N1, kGNSSRxPin, kGNSSTxPin);
+  NMEA0183IOTask* nmea0183_io_task = new NMEA0183IOTask(serial);
+  ConnectGNSS(&nmea0183_io_task->parser_, new GNSSData());
+}
+
+void OneWire() {
+  // Setup dallas temperature sensors
+  DallasTemperatureSensors* dts = new DallasTemperatureSensors(kDQPin);
+  // Measure exhaust temperature 1
+  auto* exhaust_temp = new OneWireTemperature(dts, onewire_read_delay,"/exhaustTemperature1/oneWire");
+  auto* exhaust_temp_calibration = new Linear(1.0, 0.0, "/exhaustTemperature1/linear");
+  auto* exhaust_temp_sk_output = new SKOutputFloat("propulsion.main.exhaustTemperature1", "/exhaustTemperature1/skPath");
+
+  exhaust_temp->connect_to(exhaust_temp_calibration)->connect_to(exhaust_temp_sk_output);
+
+  // Measure exhaust temperature 2
+  auto* exhaust_temp2 = new OneWireTemperature(dts, onewire_read_delay,"/exhaustTemperature2/oneWire");
+  auto* exhaust_temp_calibration2 = new Linear(1.0, 0.0, "/exhaustTemperature2/linear");
+  auto* exhaust_temp_sk_output2 = new SKOutputFloat("propulsion.main.exhaustTemperature2", "/exhaustTemperature2/skPath");
+  exhaust_temp2->connect_to(exhaust_temp_calibration2)->connect_to(exhaust_temp_sk_output2);
+
+  // Measure engine temperature 3
+  auto* engine_temp = new OneWireTemperature(dts, onewire_read_delay,"/engineTemperature1/oneWire");
+  auto* engine_temp_calibration = new Linear(1.0, 0.0, "/engineTemperature1/linear");
+  auto* engine_temp_sk_output = new SKOutputFloat("propulsion.main.engineTemperature1", "/engineTemperature1/skPath");
+  engine_temp->connect_to(engine_temp_calibration)->connect_to(engine_temp_sk_output);
 }
 
 void loop() { event_loop()->tick(); }

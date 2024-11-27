@@ -5,6 +5,7 @@
 
 namespace sensesp {
 
+
 // I2C pins on HALMET.
 const int kSDAPin = 21;
 const int kSCLPin = 22;
