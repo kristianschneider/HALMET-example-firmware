@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "new": "cpp",
-        "signalk_time.h": "c"
+        "signalk_time.h": "c",
+        "functional": "cpp"
     }
 }
