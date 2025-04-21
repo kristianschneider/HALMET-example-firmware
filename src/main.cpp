@@ -9,7 +9,7 @@
 // for external hardware libraries.
 
 #include <Adafruit_ADS1X15.h>
-#include <Adafruit_GFX.h>
+//#include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <NMEA2000_esp32.h>
 
@@ -69,8 +69,10 @@ TwoWire* i2c;
 ///////////// NMEA2000 config /////////////
 tNMEA2000* nmea2000;
 NMEA2000FuelFlowRateHandler* nmea2000_handler = nullptr;
-void NMEA2000FuelFlow();
 
+void NMEA2000FuelFlow();
+void NMEAGPS();
+void OneWire();
 
 // Set the ADS1115 GAIN to adjust the analog input voltage range.
 // On HALMET, this refers to the voltage range of the ADS1115 input
