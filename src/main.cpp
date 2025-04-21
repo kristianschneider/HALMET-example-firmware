@@ -30,12 +30,9 @@
 #include "sensesp_nmea0183/wiring.h"
 #include "sensesp_onewire/onewire_temperature.h"
 
-// #ifdef ENABLE_SIGNALK
 #include "sensesp_app_builder.h"
 #define BUILDER_CLASS SensESPAppBuilder
-// #else
-// #include "sensesp_minimal_app_builder.h"
-// #endif
+
 
 #include "Arduino.h"
 #include "NMEA2000FuelFlowRateHandler.h"
