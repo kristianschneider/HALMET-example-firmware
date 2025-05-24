@@ -13,7 +13,7 @@
 #include <Adafruit_SSD1306.h>
 #include <NMEA2000_esp32.h>
 
-#include "debug_gps.h"
+// #include "debug_gps.h"
 #include "n2k_senders.h"
 #include "sensesp/net/discovery.h"
 #include "sensesp/sensors/analog_input.h"
@@ -26,8 +26,8 @@
 #include "sensesp/transforms/moving_average.h"
 #include "sensesp/transforms/linear.h"
 #include "sensesp/ui/config_item.h"
-#include "sensesp_nmea0183/nmea0183.h"
-#include "sensesp_nmea0183/wiring.h"
+// #include "sensesp_nmea0183/nmea0183.h"
+// #include "sensesp_nmea0183/wiring.h"
 #include "sensesp_onewire/onewire_temperature.h"
 
 #include "sensesp_app_builder.h"
@@ -46,7 +46,7 @@
 
 using namespace sensesp;
 using namespace halmet;
-using namespace sensesp::nmea0183;
+// using namespace sensesp::nmea0183;
 using namespace sensesp::onewire;
 
 ///////////// GPS serial config /////////////
@@ -68,7 +68,7 @@ tNMEA2000* nmea2000;
 NMEA2000FuelFlowRateHandler* nmea2000_handler = nullptr;
 
 void NMEA2000FuelFlow();
-void NMEAGPS();
+//void NMEAGPS();
 void OneWire();
 
 // Set the ADS1115 GAIN to adjust the analog input voltage range.
@@ -124,7 +124,7 @@ void setup() {
                     ->get_app();
 
   // Setup GPS serial port
-  NMEAGPS();
+  //NMEAGPS();
 
   OneWire();
 
@@ -219,12 +219,12 @@ nmea2000_handler->setSignalKSender([fuel_rate_sk_output](const std::string& path
   });
 }
 
-void NMEAGPS() {
-  HardwareSerial* serial = &Serial1;
-  serial->begin(kGNSSBitRate, SERIAL_8N1, kGNSSRxPin, kGNSSTxPin);
-  NMEA0183IOTask* nmea0183_io_task = new NMEA0183IOTask(serial);
-  ConnectGNSS(&nmea0183_io_task->parser_, new GNSSData());
-}
+// void NMEAGPS() {
+//   HardwareSerial* serial = &Serial1;
+//   serial->begin(kGNSSBitRate, SERIAL_8N1, kGNSSRxPin, kGNSSTxPin);
+//   NMEA0183IOTask* nmea0183_io_task = new NMEA0183IOTask(serial);
+//   ConnectGNSS(&nmea0183_io_task->parser_, new GNSSData());
+// }
 
 void OneWire() {
   // Setup dallas temperature sensors
