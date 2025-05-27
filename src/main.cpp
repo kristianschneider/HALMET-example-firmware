@@ -142,12 +142,16 @@ void setup() {
   debugD("ADS1115 initialized: %d", ads_initialized);
 
   // Read the voltage level of analog input A2
-  auto a2_voltage = new ADS1115VoltageInput(ads1115, 1, "/Voltage A2");
+  auto tank_a1_volume = ConnectTankSender(ads1115, 0, "Fuel", "fuel.main", 3000,true); //tank / PINK
+  auto a2_voltage = new ADS1115VoltageInput(ads1115, 1, "/Voltage A2"); //trim / BROWN/WHITE
+  auto a3_voltage = new ADS1115VoltageInput(ads1115, 2, "/Voltage A3"); //Oil pressure LT BLUE
+  auto a4_voltage = new ADS1115VoltageInput(ads1115, 3, "/Voltage A4"); //bat voltage RED
 
 
-  a2_voltage->connect_to(
-      new SKOutputFloat("Analog Voltage A2", "sensors.a2.voltage",
-                        new SKMetadata("Analog Voltage A2", "V")));
+tank_a1_volume->connect_to(new SKOutputFloat("Fuel Volume", "/sensors.tank_a1.volume", new SKMetadata("Fuel Volume", "m3")));
+a2_voltage->connect_to(new SKOutputFloat("Analog Voltage A2", "/sensors.a2.voltage",new SKMetadata("Analog Voltage A2", "V")));
+a3_voltage->connect_to(new SKOutputFloat("Analog Voltage A3", "/sensors.a3.voltage",new SKMetadata("Analog Voltage A3", "V")));
+a4_voltage->connect_to(new SKOutputFloat("Analog Voltage A4", "/sensors.a4.voltage",new SKMetadata("Analog Voltage A4", "V")));
 
 
   // To avoid garbage collecting all shared pointers created in setup(),
