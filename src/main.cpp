@@ -148,10 +148,10 @@ void setup() {
   auto a4_voltage = new ADS1115VoltageInput(ads1115, 3, "/Voltage A4"); //bat voltage RED
 
 
-tank_a1_volume->connect_to(new SKOutputFloat("Fuel Volume", "/sensors.tank_a1.volume", new SKMetadata("Fuel Volume", "m3")));
-a2_voltage->connect_to(new SKOutputFloat("Analog Voltage A2", "/sensors.a2.voltage",new SKMetadata("Analog Voltage A2", "V")));
-a3_voltage->connect_to(new SKOutputFloat("Analog Voltage A3", "/sensors.a3.voltage",new SKMetadata("Analog Voltage A3", "V")));
-a4_voltage->connect_to(new SKOutputFloat("Analog Voltage A4", "/sensors.a4.voltage",new SKMetadata("Analog Voltage A4", "V")));
+tank_a1_volume->connect_to(new SKOutputFloat("tanks.fuel.0.currentVolume", "/sensors.tank_a1.volume", new SKMetadata("Fuel Volume", "m3")));
+a2_voltage->connect_to(new SKOutputFloat("electrical.sensors.analog.2.voltage", "/sensors.a2.voltage",new SKMetadata("Analog Voltage Trim", "V")));
+a3_voltage->connect_to(new SKOutputFloat("electrical.sensors.analog.3.voltage", "/sensors.a3.voltage",new SKMetadata("Analog Voltage Oil pressure", "V")));
+a4_voltage->connect_to(new SKOutputFloat("electrical.sensors.analog.4.voltage", "/sensors.a4.voltage",new SKMetadata("Analog Voltage Battery", "V")));
 
 
   // To avoid garbage collecting all shared pointers created in setup(),
