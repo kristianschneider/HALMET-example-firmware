@@ -1,6 +1,6 @@
 #ifndef NMEA2000FuelFlowRateHandler_H
 #define NMEA2000FuelFlowRateHandler_H
-
+#include <string>
 #include <NMEA2000.h>  // Include the necessary NMEA2000 library
 
 #include <functional>  // For std::function

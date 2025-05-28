@@ -13,7 +13,7 @@
 #include <Adafruit_SSD1306.h>
 #include <NMEA2000_esp32.h>
 
-#include "debug_gps.h"
+// #include "debug_gps.h"
 #include "n2k_senders.h"
 #include "sensesp/net/discovery.h"
 #include "sensesp/sensors/analog_input.h"
@@ -26,8 +26,8 @@
 #include "sensesp/transforms/moving_average.h"
 #include "sensesp/transforms/linear.h"
 #include "sensesp/ui/config_item.h"
-#include "sensesp_nmea0183/nmea0183.h"
-#include "sensesp_nmea0183/wiring.h"
+// #include "sensesp_nmea0183/nmea0183.h"
+// #include "sensesp_nmea0183/wiring.h"
 #include "sensesp_onewire/onewire_temperature.h"
 
 #include "sensesp_app_builder.h"
@@ -46,7 +46,7 @@
 
 using namespace sensesp;
 using namespace halmet;
-using namespace sensesp::nmea0183;
+// using namespace sensesp::nmea0183;
 using namespace sensesp::onewire;
 
 ///////////// GPS serial config /////////////
@@ -68,7 +68,7 @@ tNMEA2000* nmea2000;
 NMEA2000FuelFlowRateHandler* nmea2000_handler = nullptr;
 
 void NMEA2000FuelFlow();
-void NMEAGPS();
+//void NMEAGPS();
 void OneWire();
 
 // Set the ADS1115 GAIN to adjust the analog input voltage range.
@@ -124,7 +124,7 @@ void setup() {
                     ->get_app();
 
   // Setup GPS serial port
-  NMEAGPS();
+  //NMEAGPS();
 
   OneWire();
 
@@ -142,13 +142,18 @@ void setup() {
   debugD("ADS1115 initialized: %d", ads_initialized);
 
   // Read the voltage level of analog input A2
-  auto a2_voltage = new ADS1115VoltageInput(ads1115, 1, "/Voltage A2");
+  auto tank_a1_volume = ConnectTankSender(ads1115, 0, "Fuel", "fuel.main", 3000,true); //tank / PINK
+  auto a2_voltage = new ADS1115VoltageInput(ads1115, 1, "/Voltage A2"); //trim / BROWN/WHITE
+  auto a3_voltage = new ADS1115VoltageInput(ads1115, 2, "/Voltage A3"); //Oil pressure LT BLUE
+  auto a4_voltage = new ADS1115VoltageInput(ads1115, 3, "/Voltage A4"); //bat voltage RED
 
 
-  a2_voltage->connect_to(
-      new SKOutputFloat("Analog Voltage A2", "sensors.a2.voltage",
-                        new SKMetadata("Analog Voltage A2", "V")));
+tank_a1_volume->connect_to(new SKOutputFloat("tanks.fuel.0.currentVolume", "/sensors.tank_a1.volume", new SKMetadata("Fuel Volume", "m3")));
+a2_voltage->connect_to(new SKOutputFloat("electrical.sensors.analog.2.voltage", "/sensors.a2.voltage",new SKMetadata("Analog Voltage Trim", "V")));
+a3_voltage->connect_to(new SKOutputFloat("electrical.sensors.analog.3.voltage", "/sensors.a3.voltage",new SKMetadata("Analog Voltage Oil pressure", "V")));
+a4_voltage->connect_to(new SKOutputFloat("electrical.sensors.analog.4.voltage", "/sensors.a4.voltage",new SKMetadata("Analog Voltage Battery", "V")));
 
+auto tacho_d1_frequency = ConnectTachoSender(kDigitalInputPin1, "main");
 
   // To avoid garbage collecting all shared pointers created in setup(),
   // loop from here.
@@ -219,12 +224,12 @@ nmea2000_handler->setSignalKSender([fuel_rate_sk_output](const std::string& path
   });
 }
 
-void NMEAGPS() {
-  HardwareSerial* serial = &Serial1;
-  serial->begin(kGNSSBitRate, SERIAL_8N1, kGNSSRxPin, kGNSSTxPin);
-  NMEA0183IOTask* nmea0183_io_task = new NMEA0183IOTask(serial);
-  ConnectGNSS(&nmea0183_io_task->parser_, new GNSSData());
-}
+// void NMEAGPS() {
+//   HardwareSerial* serial = &Serial1;
+//   serial->begin(kGNSSBitRate, SERIAL_8N1, kGNSSRxPin, kGNSSTxPin);
+//   NMEA0183IOTask* nmea0183_io_task = new NMEA0183IOTask(serial);
+//   ConnectGNSS(&nmea0183_io_task->parser_, new GNSSData());
+// }
 
 void OneWire() {
   // Setup dallas temperature sensors
