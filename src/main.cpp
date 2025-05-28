@@ -153,6 +153,7 @@ a2_voltage->connect_to(new SKOutputFloat("electrical.sensors.analog.2.voltage", 
 a3_voltage->connect_to(new SKOutputFloat("electrical.sensors.analog.3.voltage", "/sensors.a3.voltage",new SKMetadata("Analog Voltage Oil pressure", "V")));
 a4_voltage->connect_to(new SKOutputFloat("electrical.sensors.analog.4.voltage", "/sensors.a4.voltage",new SKMetadata("Analog Voltage Battery", "V")));
 
+auto tacho_d1_frequency = ConnectTachoSender(kDigitalInputPin1, "main");
 
   // To avoid garbage collecting all shared pointers created in setup(),
   // loop from here.

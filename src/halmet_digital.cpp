@@ -1,5 +1,5 @@
 #include "halmet_digital.h"
-
+#include "sensesp/transforms/moving_average.h" 
 #include "sensesp/sensors/digital_input.h"
 #include "sensesp/sensors/sensor.h"
 #include "sensesp/signalk/signalk_output.h"
@@ -8,9 +8,7 @@
 
 using namespace sensesp;
 
-// Default RPM count scale factor, corresponds to 100 pulses per revolution.
-// This is rarely, if ever correct.
-const float kDefaultFrequencyScale = 1 / 100.;
+const float kDefaultFrequencyScale = 1 / 5.;
 
 FloatProducer* ConnectTachoSender(int pin, String name) {
   char config_path[80];
@@ -38,8 +36,23 @@ FloatProducer* ConnectTachoSender(int pin, String name) {
   auto tacho_frequency = new Frequency(kDefaultFrequencyScale, config_path);
 
   tacho_input->connect_to(tacho_frequency);
+// configure a smoothing window of N samples (e.g. 10)
+  snprintf(config_path, sizeof(config_path),
+           "/Tacho %s/Smoothing window", name.c_str());
+  snprintf(config_title, sizeof(config_title),
+           "Tacho %s Smoothing window", name.c_str());
+  snprintf(config_description, sizeof(config_description),
+           "Number of samples to average for smoothing RPM", name.c_str());
+  
 
-#ifdef ENABLE_SIGNALK
+  auto tacho_smoother = new MovingAverage(5, 1.0, config_path);
+  
+  ConfigItem(tacho_smoother)
+      ->set_title(config_title)
+      ->set_description(config_description);
+  // connect the tacho frequency to the smoother
+  tacho_frequency->connect_to(tacho_smoother);
+
   snprintf(config_path, sizeof(config_path), "/Tacho %s/Revolutions SK Path",
            name.c_str());
   snprintf(sk_path, sizeof(sk_path), "propulsion.%s.revolutions", name.c_str());
@@ -54,8 +67,7 @@ FloatProducer* ConnectTachoSender(int pin, String name) {
       ->set_title(config_title)
       ->set_description(config_description);
 
-  tacho_frequency->connect_to(tacho_frequency_sk_output);
-#endif
+  tacho_smoother->connect_to(tacho_frequency_sk_output);
 
   return tacho_frequency;
 }
